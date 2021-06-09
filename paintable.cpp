@@ -237,7 +237,7 @@ void paintable::paintEvent(QPaintEvent *)
     painter.setRenderHints(QPainter::Antialiasing);
     //background
     painter.setPen(Qt::NoPen);
-    painter.setBrush(Qt::white);
+    painter.setBrush(QColor(255,255,255,1));
     painter.drawRect(0,0,width(),height());
 
 //    painter.setOpacity(0.4);

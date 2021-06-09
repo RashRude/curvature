@@ -5,18 +5,23 @@ curvature::curvature(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::curvature)
 {
+    //    QWidget::setCursor(QCursor(Qt::BlankCursor));
     ui->setupUi(this);
     this->setWindowTitle("Curvature Measure");
     setWindowIcon(QIcon("://icon.png"));
-    setAttribute(Qt::WA_DeleteOnClose);
-    connect(ui->actionopen,&QAction::triggered,this,&curvature::fileOpen);
-    connect(ui->actiongrid,&QAction::triggered,this,&curvature::gridOn);
-    connect(ui->actionscale,&QAction::triggered,this,&curvature::scaleSet);
-    connect(ui->actioncurvature,&QAction::triggered,this,&curvature::curvatureSet);
-    connect(ui->actiondataexp,&QAction::triggered,this,&curvature::dataExport);
+    //    setAttribute(Qt::WA_DeleteOnClose);
+    setWindowFlags(Qt::FramelessWindowHint);//需要去掉标题栏
+
+
+    setAttribute(Qt::WA_TranslucentBackground);
+    //    connect(ui->actionopen,&QAction::triggered,this,&curvature::fileOpen);
+    //    connect(ui->actiongrid,&QAction::triggered,this,&curvature::gridOn);
+    //    connect(ui->actionscale,&QAction::triggered,this,&curvature::scaleSet);
+    //    connect(ui->actioncurvature,&QAction::triggered,this,&curvature::curvatureSet);
+    //    connect(ui->actiondataexp,&QAction::triggered,this,&curvature::dataExport);
     ui->scaleCalibration->setEnabled(false);
     ui->rowAddbutton->setEnabled(false);
-
+    this->showMaximized();
 
     /* 创建数据模型 */
     myModel = new QStandardItemModel();
@@ -24,7 +29,20 @@ curvature::curvature(QWidget *parent) :
     myModel->setHorizontalHeaderLabels({"Time", "Curvature", "CurvatuerEorr", "Length","LengthEorr", "Angle","AngleEorr","MeasureCount"});
     ui->tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     ui->tableView->setModel(myModel);
+
+
+
     readConfig();
+
+
+    //创建自动备份数据路径
+    QString fileName = QCoreApplication::applicationDirPath();
+    fileName+="/autoSave";
+    QDir* dir = new QDir();
+    if(!dir->exists(fileName))
+    {
+        dir->mkpath(fileName);
+    }
 }
 
 curvature::~curvature()
@@ -36,7 +54,8 @@ curvature::~curvature()
 
 void curvature::keyPressEvent(QKeyEvent *ev)
 {
-    switch (ev->key()) {
+    switch (ev->key())
+    {
     case Qt::Key_Control:
         disconnect(ui->draw,&paintable::mouseMidpos,0,0);
         disconnect(ui->draw,&paintable::mouseMidmove,0,0);
@@ -59,7 +78,8 @@ void curvature::keyPressEvent(QKeyEvent *ev)
 }
 void curvature::keyReleaseEvent(QKeyEvent *ev)
 {
-    switch (ev->key()) {
+    switch (ev->key())
+    {
     case Qt::Key_Control:
         disconnect(ui->draw,&paintable::mouseMidpos,0,0);
         disconnect(ui->draw,&paintable::mouseMidmove,0,0);
@@ -69,7 +89,10 @@ void curvature::keyReleaseEvent(QKeyEvent *ev)
         break;
     }
 }
-
+void curvature::fullScreenmode()
+{
+    this->showFullScreen();
+}
 void curvature::mousePicmove(int x,int y)
 {
 
@@ -80,11 +103,11 @@ void curvature::mousePicpos(int x,int y)
 {
     focusX=x-ui->draw->zoomX;
     focusY=y-ui->draw->zoomY;
-//    ui->draw->picMove(focusX,focusY);
+    //    ui->draw->picMove(focusX,focusY);
 }
 void curvature::mousePiczoom(double zoom)
 {
-//    zoomValue=zoomValue*zoom;
+    //    zoomValue=zoomValue*zoom;
 
     ui->draw->picZoom(zoom*ui->draw->zoomCoefficient);
 }
@@ -100,7 +123,7 @@ void curvature::curvatureSet()
     connect(ui->draw,&paintable::mousePos,this, &curvature::mouseMark1);
     connect(ui->draw,&paintable::mouseMove,this, &curvature::mouseMark2);
     connect(ui->draw,&paintable::mouseEndpos,this, &curvature::mouseMark3);
-
+    ui->stateMessage->setText(tr("Measure Mode"));
 }
 void curvature::scaleSet()
 {
@@ -177,7 +200,7 @@ void curvature::on_photoList_itemSelectionChanged()
     tempDir.append(Dir+"/");
     QString path = ui->photoList->currentItem()->text();
     tempDir.append(path);
-    ui->draw->setScaledContents(true);
+
     ui->draw->drawBackground(tempDir);
     //    ui->preView->setScaledContents(true);
     //    ui->preView->setPixmap(tempDir);
@@ -225,8 +248,12 @@ void curvature::on_photoIndex_valueChanged(int arg1)
 
 void curvature::on_scaleCalibration_editingFinished()
 {
-    scaleValue=ui->draw->length/ui->draw->zoomCoefficient/ui->scaleCalibration->text().toDouble();
+    double lengthP=ui->draw->length;
+    double zoomCoe=ui->draw->zoomCoefficient;
+    double lengthC=ui->scaleCalibration->text().toDouble();
+    scaleValue=lengthP/zoomCoe/lengthC;
     ui->scaleCalibration->setEnabled(false);
+    ui->checkScale->setCheckState(Qt::Unchecked);
 }
 
 
@@ -240,7 +267,12 @@ void curvature::on_lineAddbutton_clicked()
     {
         ui->photoList->setCurrentRow(timeIndx);
     }
+
     myModel->setItem(dataCount,0,new QStandardItem(QString("%1").arg(timeIndx)));
+    for(int i=1;i<=7;i++)
+    {
+        myModel->setItem(dataCount,i,new QStandardItem("0"));
+    }
     ui->tableView->selectRow(dataCount);
     dataCount++;
     ui->rowAddbutton->setEnabled(true);
@@ -308,7 +340,8 @@ void curvature::dataExport()
         else
         {
 
-            ui->statusBar->showMessage(tr("Exporting data..."));
+            //            ui->statusBar->showMessage(tr("Exporting data..."));
+            ui->stateMessage->setText(tr("Exporting data..."));
             QTextStream out(&file);
 
             out<<tr("Time,")<<tr("Curvature,")<<tr("CurvatuerEorr,")<<tr("Length(mm),")
@@ -326,7 +359,109 @@ void curvature::dataExport()
             }
 
             file.close();
-            ui->statusBar->showMessage(tr("Exported completely"));
+            //            ui->statusBar->showMessage(tr("Exported completely"));
+            ui->stateMessage->setText(tr("Exported completely"));
         }
     }
+}
+
+void curvature::on_checkGrid_stateChanged(int arg1)
+{
+    ui->draw->gridSet(arg1);
+}
+
+void curvature::on_openFile_clicked()
+{
+    fileOpen();
+}
+
+
+void curvature::on_checkScale_stateChanged(int arg1)
+{
+    disconnect(ui->draw,&paintable::mousePos,0, 0);
+    disconnect(ui->draw,&paintable::mouseMove,0, 0);
+    disconnect(ui->draw,&paintable::mouseEndpos,0, 0);
+    connect(ui->draw,&paintable::mousePos,this, &curvature::mouseMark1);
+    connect(ui->draw,&paintable::mouseMove,this, &curvature::mouseMark2);
+    ui->scaleCalibration->setEnabled(arg1);
+    ui->stateMessage->setText(tr("Scale Calibration"));
+}
+
+void curvature::on_closeButton_clicked()
+{
+    QString fileName = QCoreApplication::applicationDirPath();
+    fileName+="/autoSave/dataAutosave.csv";
+    QFile file(fileName);
+    file.open( QIODevice::WriteOnly | QIODevice::Text );
+    if(!file.isWritable())
+    {
+        QMessageBox::warning(this,tr("Error"),tr("Fail to set autosave !"));
+    }
+    else
+    {
+        if(myModel!=NULL)
+        {
+
+            QTextStream out(&file);
+            out<<tr("Time,")<<tr("Curvature,")<<tr("CurvatuerEorr,")<<tr("Length(mm),")
+              <<tr("LengthEorr,")<<tr("Angle,")<<tr("AngleEorr,")<<tr("MeasureCount,\n");//表头
+            for(int j=0;j<myModel->rowCount();j++)
+            {
+                for(int k=0;k<myModel->columnCount();k++)
+                {
+                    out<<tr("%1,").arg(myModel->item(j,k)->text());
+                }
+                out<<tr("\n");
+            }
+            file.close();
+        }
+    }
+
+
+    this->close();
+}
+
+void curvature::on_exportFile_clicked()
+{
+    dataExport();
+}
+
+
+void curvature::screenCapture()
+{
+
+    this->showMinimized();
+    QRect rec=ui->draw->geometry();
+
+
+    QScreen *pscreen = QApplication::primaryScreen();
+    QPixmap tempic=pscreen->QScreen::grabWindow(QApplication::desktop()->winId(),0,0,-1,-1);
+
+
+
+    QString fileName = QCoreApplication::applicationDirPath();
+    fileName+="/picSave";
+    QDir* dir = new QDir();
+    if(!dir->exists(fileName))
+    {
+        dir->mkpath(fileName);
+    }
+    dir->cd(fileName);
+    fileName+=QString("/dataAutosave%1.png").arg(ui->photoIndex->value());
+
+    tempic.copy(rec).save(fileName,"png");
+    dataCount=0;
+    ui->draw->drawBackground(fileName);
+    this->showMaximized();
+}
+void curvature::on_pushButton_clicked()
+{
+    screenCapture();
+}
+
+
+
+void curvature::on_minimizeButton_clicked()
+{
+    showMinimized();
 }

@@ -9,7 +9,7 @@ CONFIG += c++11
 # deprecated API in order to know how to port your code away from it.
 DEFINES += QT_DEPRECATED_WARNINGS
 
-VERSION = 2.7.1.0
+VERSION = 3.2.6.0
 
 QMAKE_TARGET_PRODUCT = CURVATURE
 QMAKE_TARGET_COMPANY = MENG

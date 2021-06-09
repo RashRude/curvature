@@ -8,6 +8,9 @@
 #include <QSettings>
 #include <QStandardItemModel>
 #include <QMessageBox>
+#include <QScreen>
+#include <QDesktopWidget>
+
 namespace Ui {
 class curvature;
 }
@@ -21,7 +24,7 @@ public:
 
     void keyPressEvent(QKeyEvent *ev);
     void keyReleaseEvent(QKeyEvent *ev);
-
+    void screenCapture();
 
     ~curvature();
 private slots:
@@ -47,6 +50,24 @@ private slots:
      void on_rowAddbutton_clicked();
 
      void on_clearMeasurebutton_clicked();
+     void fullScreenmode();
+     void on_checkGrid_stateChanged(int arg1);
+
+     void on_openFile_clicked();
+
+
+     void on_checkScale_stateChanged(int arg1);
+
+     void on_closeButton_clicked();
+
+     void on_exportFile_clicked();
+
+
+     void on_pushButton_clicked();
+
+
+
+     void on_minimizeButton_clicked();
 
 protected:
      void writeConfig();
