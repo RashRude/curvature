@@ -53,6 +53,7 @@ public:
     int px=0,py=0,lx=0,ly=0,rx=0,ry=0;
     double zoomCoefficient=1;
     int zoomX=0,zoomY=0;
+    int backColor=255;
     QString backImage=NULL;
 };
 

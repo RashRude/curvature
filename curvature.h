@@ -10,6 +10,13 @@
 #include <QMessageBox>
 #include <QScreen>
 #include <QDesktopWidget>
+#include <QCollator>
+#include <algorithm>
+#include <vector>
+#include<QDragEnterEvent>
+#include<QMimeData>
+#include<QDropEvent>
+#include<QUrl>
 
 namespace Ui {
 class curvature;
@@ -29,7 +36,7 @@ public:
     ~curvature();
 private slots:
      void fileOpen();
-     void gridOn();
+//     void gridOn();
      void scaleSet();
      void curvatureSet();
      void on_photoList_itemSelectionChanged();
@@ -39,7 +46,7 @@ private slots:
      void mousePicmove(int x,int y);
      void mousePicpos(int x,int y);
      void mousePiczoom(double zoom);
-     void dataExport();
+     void dataExport(QString fileName);
      void on_photoList_currentRowChanged(int currentRow);
 
      void on_photoIndex_valueChanged(int arg1);
@@ -69,12 +76,15 @@ private slots:
 
      void on_minimizeButton_clicked();
 
+     void on_lineDelbutton_clicked();
+
 protected:
      void writeConfig();
      void readConfig();
      double dataMean(QVector<double> resultSet);
      double dataSD(QVector<double> resultSet);
-
+     void dragEnterEvent(QDragEnterEvent*event);//拖动进入事件
+     void dropEvent(QDropEvent*event);
 private:
     Ui::curvature *ui;
     QString Dir;//打开文件的路径

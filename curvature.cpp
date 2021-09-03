@@ -43,7 +43,80 @@ curvature::curvature(QWidget *parent) :
     {
         dir->mkpath(fileName);
     }
+    this->setAcceptDrops(true);
 }
+
+
+void curvature::dragEnterEvent(QDragEnterEvent*event)  //将文件拖进来的事件
+{
+    //如果类型是bin文件才能接受拖动。这里的compare字符串比较函数，相等的时候返回0，所以要取反
+   if(!event->mimeData()->urls()[0].fileName().right(3).compare("csv"))
+       event->acceptProposedAction();
+    else
+       event->ignore();//否则不接受鼠标事件
+}
+void curvature::dropEvent(QDropEvent*event)    //放下事件
+{
+    const QMimeData*qm=event->mimeData();//获取MIMEData
+//    qDebug()<<"drop file Name:"<<qm->urls()[0].toLocalFile();
+    myModel->clear();
+    QFile file(qm->urls()[0].toLocalFile());
+
+    file.open( QIODevice::ReadOnly | QIODevice::Text );
+    if(!file.isReadable())
+    {
+        QMessageBox::warning(this,tr("Error"),tr("Fail to open !"));
+    }
+    else
+    {
+
+        //            ui->statusBar->showMessage(tr("Exporting data..."));
+        ui->stateMessage->setText(tr("Importing data..."));
+
+        int r_count = 0; //统计文件的行数
+        int c_count=0;
+        QStringList textList; //记录文件中每一行的数据
+        QTextStream in(&file);
+        while (!in.atEnd())
+        {
+            QString line = in.readLine();
+            textList.append(line); //保存文件的数据
+            r_count++; //记录文件的行数
+        }
+        file.close(); //关闭文件
+        dataCount=r_count-1;
+        QStringList tmpList;
+        tmpList = textList.at(0).split(",");
+        c_count=tmpList.count();
+//        qDebug()<<c_count;
+        for(int row =1; row <=dataCount; row++)
+        {
+//            QStringList tmpList;
+            tmpList = textList.at(row).split(",");
+            for(int col = 0; col <c_count; col++)
+            {
+                myModel->setItem(row-1, col,new QStandardItem(tmpList.at(col)));
+            }
+        }
+
+
+//        for(int i=0;i<=7;i++)
+//        {
+//            myModel->setItem(dataCount,i,new QStandardItem(in.readLine().at(i)));
+//        }
+
+//        ui->rowAddbutton->setEnabled(true);
+//        ui->tableView->show();
+
+
+        //            ui->statusBar->showMessage(tr("Exported completely"));
+        ui->stateMessage->setText(tr("Imported completely"));
+    }
+
+
+}
+
+
 
 curvature::~curvature()
 {
@@ -138,10 +211,10 @@ void curvature::scaleSet()
 }
 
 
-void curvature::gridOn()
-{
-    ui->draw->gridSet(!(ui->draw->grid));
-}
+//void curvature::gridOn()
+//{
+//    ui->draw->gridSet(!(ui->draw->grid));
+//}
 void curvature::fileOpen()
 {
     photoPath.clear();
@@ -157,12 +230,21 @@ void curvature::fileOpen()
     Dir = QFileDialog::getExistingDirectory(this);//获取文件所在的具体路径
     //    ui->photoPath->setText(Dir);//显示打开的文件的具体路径
     QDir dir(Dir);
-    dir.setFilter(QDir::Files | QDir::NoSymLinks);
+    dir.setFilter(QDir::Files | QDir::NoSymLinks );
     QStringList filters;
     filters << "*.png"<<"*.jpg";
     dir.setNameFilters(filters);
-    QFileInfoList fileList = dir.entryInfoList(filters); //获取目录下的png文件
+    QFileInfoList fileList = dir.entryInfoList(filters,QDir::Files | QDir::NoSymLinks,QDir::NoSort); //获取目录下的png文件
     QString fileDir; //保存图片所在的路径
+//    QCollator collator;
+//    collator.setNumericMode(true);
+
+//    std::sort(fileList.begin(), fileList.end(),
+//                  [& collator](const QString & str1, const QString & str2)
+//    {
+//          return collator.compare(str1, str2) < 0;
+//    }
+//    );
 
     //列出目录下的文件
     for(int i=0;i<fileList.count();i++)
@@ -261,17 +343,30 @@ void curvature::on_scaleCalibration_editingFinished()
 
 void curvature::on_lineAddbutton_clicked()
 {
-    int timeIndx=ui->photoIndex->value()-1;
-
-    if(ui->photoList->count()!=0)
+   QString timeIndx;
+    if(ui->photoList->currentItem()==nullptr)
     {
-        ui->photoList->setCurrentRow(timeIndx);
+        timeIndx=QString("%1").arg(myModel->rowCount()+1);
+    }
+    else
+    {
+        timeIndx=ui->photoList->currentItem()->text();
     }
 
-    myModel->setItem(dataCount,0,new QStandardItem(QString("%1").arg(timeIndx)));
+//    if(ui->photoList->count()!=0)
+//    {
+//        ui->photoList->setCurrentRow(timeIndx);
+//    }
+    int num=ui->tableView->currentIndex().row()+1;
+    myModel->insertRow(num,new QStandardItem(QString("%1").arg(timeIndx)));
+//    myModel->setItem(dataCount,0,new QStandardItem(QString("%1").arg(timeIndx)));
+//    for(int i=1;i<=7;i++)
+//    {
+//        myModel->setItem(dataCount,i,new QStandardItem("0"));
+//    }
     for(int i=1;i<=7;i++)
     {
-        myModel->setItem(dataCount,i,new QStandardItem("0"));
+        myModel->setItem(num,i,new QStandardItem("0"));
     }
     ui->tableView->selectRow(dataCount);
     dataCount++;
@@ -326,9 +421,9 @@ void curvature::on_clearMeasurebutton_clicked()
     angleVec.squeeze();
     curvatureSet();
 }
-void curvature::dataExport()
+void curvature::dataExport(QString fileName)
 {
-    QString fileName = QFileDialog::getSaveFileName(this,"data", Dir, tr("csv files(*.csv)"));    //设置保存的文件名
+//    QString fileName = QFileDialog::getSaveFileName(this,"data", Dir, tr("csv files(*.csv)"));    //设置保存的文件名
     if(fileName != NULL)
     {
         QFile file(fileName);
@@ -348,12 +443,14 @@ void curvature::dataExport()
               <<tr("LengthEorr,")<<tr("Angle,")<<tr("AngleEorr,")<<tr("MeasureCount,\n");//表头
 
             //               out<<tr("%1,").arg(myModel->item(0,1)->text());
-
             for(int j=0;j<myModel->rowCount();j++)
             {
                 for(int k=0;k<myModel->columnCount();k++)
                 {
+                    if(myModel->item(j,k)!=nullptr)
+                    {
                     out<<tr("%1,").arg(myModel->item(j,k)->text());
+                    }
                 }
                 out<<tr("\n");
             }
@@ -391,72 +488,89 @@ void curvature::on_closeButton_clicked()
 {
     QString fileName = QCoreApplication::applicationDirPath();
     fileName+="/autoSave/dataAutosave.csv";
-    QFile file(fileName);
-    file.open( QIODevice::WriteOnly | QIODevice::Text );
-    if(!file.isWritable())
-    {
-        QMessageBox::warning(this,tr("Error"),tr("Fail to set autosave !"));
-    }
-    else
-    {
-        if(myModel!=NULL)
-        {
+//    QFile file(fileName);
+//    file.open( QIODevice::WriteOnly | QIODevice::Text );
+//    if(!file.isWritable())
+//    {
+//        QMessageBox::warning(this,tr("Error"),tr("Fail to set autosave !"));
+//    }
+//    else
+//    {
+//        if(myModel!=NULL)
+//        {
 
-            QTextStream out(&file);
-            out<<tr("Time,")<<tr("Curvature,")<<tr("CurvatuerEorr,")<<tr("Length(mm),")
-              <<tr("LengthEorr,")<<tr("Angle,")<<tr("AngleEorr,")<<tr("MeasureCount,\n");//表头
-            for(int j=0;j<myModel->rowCount();j++)
-            {
-                for(int k=0;k<myModel->columnCount();k++)
-                {
-                    out<<tr("%1,").arg(myModel->item(j,k)->text());
-                }
-                out<<tr("\n");
-            }
-            file.close();
-        }
-    }
+//            QTextStream out(&file);
+//            out<<tr("Time,")<<tr("Curvature,")<<tr("CurvatuerEorr,")<<tr("Length(mm),")
+//              <<tr("LengthEorr,")<<tr("Angle,")<<tr("AngleEorr,")<<tr("MeasureCount,\n");//表头
+//            for(int j=0;j<myModel->rowCount();j++)
+//            {
+//                for(int k=0;k<myModel->columnCount();k++)
+//                {
+//                    out<<tr("%1,").arg(myModel->item(j,k)->text());
+//                }
+//                out<<tr("\n");
+//            }
+//            file.close();
+//        }
+//    }
 
-
+    dataExport(fileName);
     this->close();
 }
 
 void curvature::on_exportFile_clicked()
 {
-    dataExport();
+    QString fileName = QFileDialog::getSaveFileName(this,"data", Dir, tr("csv files(*.csv)"));    //设置保存的文件名
+    dataExport(fileName);
 }
 
 
 void curvature::screenCapture()
 {
 
-    this->showMinimized();
-    QRect rec=ui->draw->geometry();
+//    QRect rec=ui->draw->geometry();
 
+    QRect rec=this->geometry();
 
     QScreen *pscreen = QApplication::primaryScreen();
-    QPixmap tempic=pscreen->QScreen::grabWindow(QApplication::desktop()->winId(),0,0,-1,-1);
+    QPixmap tempic=pscreen->grabWindow(QApplication::desktop()->winId(),0,0,-1,-1);
 
 
 
     QString fileName = QCoreApplication::applicationDirPath();
+
     fileName+="/picSave";
+
     QDir* dir = new QDir();
     if(!dir->exists(fileName))
     {
         dir->mkpath(fileName);
     }
     dir->cd(fileName);
-    fileName+=QString("/dataAutosave%1.png").arg(ui->photoIndex->value());
-
+    int fileCount=dir->entryInfoList().count();
+    fileName+=QString("/dataAutosave%1.png").arg(fileCount);
+    QString dataName=fileName+".csv";
+    dataExport(dataName);
     tempic.copy(rec).save(fileName,"png");
-    dataCount=0;
+
+//    dataCount=0;
     ui->draw->drawBackground(fileName);
-    this->showMaximized();
+
 }
 void curvature::on_pushButton_clicked()
 {
-    screenCapture();
+    if(!ui->checkGrid->checkState())
+    {
+        this->showMinimized();
+        screenCapture();
+        this->showMaximized();
+    }
+    else
+    {
+        screenCapture();
+        ui->checkGrid->setCheckState(Qt::Unchecked);
+        mouseMark1(0,0);
+    }
 }
 
 
@@ -464,4 +578,14 @@ void curvature::on_pushButton_clicked()
 void curvature::on_minimizeButton_clicked()
 {
     showMinimized();
+}
+
+void curvature::on_lineDelbutton_clicked()
+{
+
+//    QStandardItem* Item = tList.at(ui->tableView->currentIndex());
+    myModel->removeRow(ui->tableView->currentIndex().row());
+    dataCount--;
+    ui->tableView->selectRow(dataCount);
+
 }

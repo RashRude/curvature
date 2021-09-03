@@ -235,9 +235,19 @@ void paintable::paintEvent(QPaintEvent *)
     QPainter painter(this);
 
     painter.setRenderHints(QPainter::Antialiasing);
+
     //background
     painter.setPen(Qt::NoPen);
-    painter.setBrush(QColor(255,255,255,1));
+    if (grid==true)
+    {
+        backColor=255;
+
+    }
+    else
+    {
+        backColor=1;
+    }
+    painter.setBrush(QColor(255,255,255,backColor));
     painter.drawRect(0,0,width(),height());
 
 //    painter.setOpacity(0.4);
@@ -296,7 +306,6 @@ void paintable::paintEvent(QPaintEvent *)
 //    painter.drawPoint(px,py);
 
 
-
     if(grid==true)
     {
         QPen pen2;
@@ -314,7 +323,9 @@ void paintable::paintEvent(QPaintEvent *)
             painter.drawLine(0,20*numy,width(),20*numy);
             numy++;
         }
+
     }
+
 
 
 }
